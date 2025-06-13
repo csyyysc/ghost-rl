@@ -1,0 +1,19 @@
+[project]
+name = "rl"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+    "gymnasium[accept-rom-licence,accept-rom-license,atari,classic-control,other]>=1.1.1",
+    "matplotlib>=3.10.3",
+    "neat-python>=0.92",
+    "numpy>=2.2.6",
+    "seaborn>=0.13.2",
+    "torch>=2.7.1",
+]
+
+[dependency-groups]
+dev = [
+    "ruff>=0.11.13",
+]
