@@ -5,7 +5,7 @@ description = "Add your description here"
 readme = "README.md"
 requires-python = ">=3.10"
 dependencies = [
-    "gymnasium[accept-rom-licence,accept-rom-license,atari,classic-control,other]>=1.1.1",
+    "gymnasium[accept-rom-licence,accept-rom-license,atari,box2d,classic-control,other]>=1.1.1",
     "matplotlib>=3.10.3",
     "neat-python>=0.92",
     "numpy>=2.2.6",
