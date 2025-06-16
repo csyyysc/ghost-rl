@@ -396,4 +396,4 @@ if __name__ == "__main__":
     # agent = train()
     
     # Uncomment to test a trained model
-    simulate("ppo_model_20250614_170429.pt")
+    simulate("ppo_model_final_20250614_202801.pt")
