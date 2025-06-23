@@ -331,46 +331,53 @@ class SACAgent:
     
     def update_policy(self):
         """Update SAC policy networks"""
+        print("🔧 Entering update_policy")
+        
         if len(self.replay_buffer) < self.batch_size:
+            print(f"🔧 Buffer too small: {len(self.replay_buffer)} < {self.batch_size}")
             return {}
         
+        print("🔧 Sampling from replay buffer")
         states, actions, rewards, next_states, dones = self.replay_buffer.sample(self.batch_size)
         
+        print("🔧 Computing target Q-values")
         with torch.no_grad():
             next_actions, next_log_probs, _ = self.actor.sample_action(next_states)
             next_q1, next_q2 = self.critic_target(next_states, next_actions)
             next_q = torch.min(next_q1, next_q2) - self.alpha * next_log_probs
             target_q = rewards.unsqueeze(1) + (1 - dones.unsqueeze(1)) * self.gamma * next_q
         
+        print("🔧 Computing current Q-values and critic loss")
         current_q1, current_q2 = self.critic(states, actions)
         critic_loss = F.mse_loss(current_q1, target_q) + F.mse_loss(current_q2, target_q)
         
-
         self.training_metrics['q1_values'].extend(current_q1.detach().cpu().numpy().flatten())
         self.training_metrics['q2_values'].extend(current_q2.detach().cpu().numpy().flatten())
         
+        print("🔧 Updating critic")
         self.critic_optimizer.zero_grad()
         critic_loss.backward()
         self.critic_optimizer.step()
         
+        print("🔧 Computing actor loss")
         new_actions, log_probs, _ = self.actor.sample_action(states)
         q1_new, q2_new = self.critic(states, new_actions)
         q_new = torch.min(q1_new, q2_new)
         
-
         entropy = -log_probs.mean()
         self.training_metrics['entropy'].append(entropy.item())
         
         actor_loss = (self.alpha * log_probs - q_new).mean()
         
-
         self.training_metrics['policy_loss'].append(actor_loss.item())
         self.training_metrics['value_loss'].append(critic_loss.item())
         
+        print("🔧 Updating actor")
         self.actor_optimizer.zero_grad()
         actor_loss.backward()
         self.actor_optimizer.step()
         
+        print("🔧 Updating temperature (alpha)")
         alpha_loss = None
         if self.auto_entropy_tuning:
             alpha_loss = -(self.log_alpha * (log_probs + self.target_entropy).detach()).mean()
@@ -382,9 +389,11 @@ class SACAgent:
         current_alpha = self.alpha.item() if hasattr(self.alpha, 'item') else self.alpha
         self.training_metrics['alpha_values'].append(current_alpha)
         
+        print("🔧 Soft updating target networks")
         for target_param, param in zip(self.critic_target.parameters(), self.critic.parameters()):
             target_param.data.copy_(target_param.data * (1.0 - self.tau) + param.data * self.tau)
         
+        print("🔧 Exiting update_policy")
         return {
             'critic_loss': critic_loss.item(),
             'actor_loss': actor_loss.item(),
@@ -489,32 +498,44 @@ def train():
     episode_length = 0
     
     while timestep < total_timesteps:
+        print(f"🔄 Main loop iteration: timestep={timestep}")
+        
         if timestep < warmup_steps:
+            print("🔄 In warmup phase - using random actions")
             action = torch.FloatTensor(env.action_space.sample()).to(agent.device)
         else:
             if timestep == warmup_steps:
                 print(f"🚀 Starting policy-based training at timestep {timestep}")
+            print("🔄 Using policy to select action")
             action = agent.select_action(state)
             if action.dim() == 2 and action.size(0) == 1:
                 action = action.squeeze(0)
         
+        print("🔄 Preparing action for environment")
         if action.dim() == 1:
             action_for_env = action.cpu().numpy()
         else:
             action_for_env = action.squeeze(0).cpu().numpy()
+        
+        print(f"🔄 Taking environment step with action shape: {action_for_env.shape}")
         next_state, reward, done, truncated, _ = env.step(action_for_env)
         next_state = agent.preprocess_state(next_state)
         
+        print("🔄 Storing transition in replay buffer")
         agent.replay_buffer.push(state, action, reward, next_state, done or truncated)
         
         episode_reward += reward
         episode_length += 1
         timestep += 1
+        print(f"🔄 Updated timestep to: {timestep}")
         
         state = next_state
         
+        print(f"🔄 Checking if should update policy: timestep={timestep}, warmup_steps={warmup_steps}")
         if timestep > warmup_steps and timestep % update_frequency == 0:
+            print("🔄 Starting policy update...")
             loss_dict = agent.update_policy()
+            print("🔄 Policy update completed")
             if loss_dict:
                 losses.append(loss_dict)
                 update_count += 1
